@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafetyWear Mobile</title>
+  <meta name="theme-color" content="#d62839">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>SafetyWear</h1>
+    <p>Emergency Companion</p>
+  </header>
+
+  <main class="container">
+    <section class="card sos-card">
+      <h2>Emergency SOS</h2>
+      <p>Tap and hold to notify contacts and dashboard.</p>
+      <button id="sos-btn" class="sos-btn">HOLD SOS</button>
+      <p id="sos-status" class="status">Ready</p>
+    </section>
+
+    <section class="card">
+      <h2>Live Location</h2>
+      <p id="location-text">Fetching location...</p>
+      <a id="map-link" href="#" target="_blank" rel="noopener">Open in Maps</a>
+    </section>
+
+    <section class="card">
+      <h2>Recent Alert</h2>
+      <p id="alert-text">No active alert found.</p>
+      <button id="refresh-btn">Refresh</button>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafetyWear Command Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+  <link href="css/style.css" rel="stylesheet">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="side-nav" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark"><i class="fa-solid fa-shield-heart"></i></div>
+        <div>
+          <div class="brand-title">SafetyWear</div>
+          <div class="brand-subtitle">IoT command center</div>
+        </div>
+      </div>
+
+      <nav class="nav-stack">
+        <button class="nav-link active" data-page="overview"><i class="fa-solid fa-chart-line"></i><span>Overview</span></button>
+        <button class="nav-link" data-page="live"><i class="fa-solid fa-heart-pulse"></i><span>Live Sensors</span></button>
+        <button class="nav-link" data-page="sensor-status"><i class="fa-solid fa-stethoscope"></i><span>Sensor Status</span></button>
+        <button class="nav-link" data-page="alerts"><i class="fa-solid fa-triangle-exclamation"></i><span>Alerts</span><b id="nav-alert-count">0</b></button>
+        <button class="nav-link" data-page="location"><i class="fa-solid fa-location-dot"></i><span>Location</span></button>
+        <button class="nav-link" data-page="devices"><i class="fa-solid fa-microchip"></i><span>Devices</span></button>
+        <button class="nav-link" data-page="settings"><i class="fa-solid fa-sliders"></i><span>Settings</span></button>
+      </nav>
+
+      <div class="hardware-panel">
+        <div class="panel-label">Current Hardware</div>
+        <div class="chip-grid">
+          <span>ESP32</span>
+          <span>MAX30102</span>
+          <span>DHT11</span>
+          <span>SOS</span>
+          <span>SW-420</span>
+          <span>VC-02</span>
+          <span>NEO-6M</span>
+          <span>SIM800L</span>
+        </div>
+      </div>
+    </aside>
+
+    <div class="mobile-backdrop" id="backdrop"></div>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-btn d-lg-none" id="menu-btn"><i class="fa-solid fa-bars"></i></button>
+        <div>
+          <h1 id="page-title">Overview</h1>
+          <p id="page-subtitle">Live wearable safety monitoring</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="live-pill"><span></span> Live</div>
+          <div class="time-pill" id="clock">--:--:--</div>
+          <button class="icon-btn" id="refresh-btn" title="Refresh"><i class="fa-solid fa-rotate"></i></button>
+        </div>
+      </header>
+
+      <section class="alert-strip d-none" id="emergency-strip">
+        <i class="fa-solid fa-siren-on"></i>
+        <strong>Active emergency</strong>
+        <span id="emergency-text">A device requires attention.</span>
+        <button class="btn btn-light btn-sm ms-auto" data-jump="alerts">Open Alerts</button>
+      </section>
+
+      <section class="page active" id="page-overview">
+        <div class="metric-grid">
+          <article class="metric danger">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>Active Alerts</span>
+            <strong id="stat-active-alerts">0</strong>
+            <small id="stat-alerts-today">0 today</small>
+          </article>
+          <article class="metric success">
+            <i class="fa-solid fa-wifi"></i>
+            <span>Online Devices</span>
+            <strong id="stat-online-devices">0</strong>
+            <small id="stat-total-devices">of 0 total</small>
+          </article>
+          <article class="metric info">
+            <i class="fa-solid fa-users"></i>
+            <span>Protected Users</span>
+            <strong id="stat-total-users">0</strong>
+            <small>registered profiles</small>
+          </article>
+          <article class="metric warning">
+            <i class="fa-solid fa-heart-pulse"></i>
+            <span>Avg Heart Rate</span>
+            <strong id="stat-avg-hr">--</strong>
+            <small>last hour BPM</small>
+          </article>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="panel live-card">
+            <div class="panel-head">
+              <div>
+                <h2>Wearable Status</h2>
+                <p id="active-device-label">Waiting for device data</p>
+              </div>
+              <span class="status-dot" id="device-dot"></span>
+            </div>
+
+            <div class="vital-grid">
+              <div class="vital" id="hr-card"><span>Heart Rate</span><strong id="vital-hr">--</strong><small>BPM</small></div>
+              <div class="vital" id="spo2-card"><span>SpO2</span><strong id="vital-spo2">--</strong><small>%</small></div>
+              <div class="vital" id="battery-card"><span>Battery</span><strong id="vital-battery">--</strong><small>%</small></div>
+              <div class="vital"><span>Body Temp</span><strong id="vital-temp">--</strong><small>C</small></div>
+            </div>
+
+            <div class="sensor-row">
+              <div><span>SW-420</span><strong id="vital-vibration">0</strong><small>vibration count</small></div>
+              <div><span>VC-02</span><strong id="vital-voice">Idle</strong><small>voice command</small></div>
+              <div><span>GPS</span><strong id="vital-gps">--</strong><small>signal</small></div>
+            </div>
+
+            <button class="sos-button" id="manual-sos"><i class="fa-solid fa-bolt"></i> Trigger SOS</button>
+          </article>
+
+          <article class="panel chart-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Heart Rate Trend</h2>
+                <p>Recent MAX30102 readings</p>
+              </div>
+              <select class="form-select form-select-sm" id="hr-range">
+                <option value="1">1 hour</option>
+                <option value="6">6 hours</option>
+                <option value="24" selected>24 hours</option>
+              </select>
+            </div>
+            <canvas id="heartRateChart"></canvas>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Recent Alerts</h2>
+                <p>Latest emergency events</p>
+              </div>
+              <button class="btn btn-outline-primary btn-sm" data-jump="alerts">View All</button>
+            </div>
+            <div class="table-wrap">
+              <table class="table align-middle">
+                <thead><tr><th>User</th><th>Type</th><th>Severity</th><th>Time</th><th>Status</th></tr></thead>
+                <tbody id="recent-alerts"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Alert Mix</h2>
+                <p>Last 30 days</p>
+              </div>
+            </div>
+            <canvas id="alertTypesChart"></canvas>
+          </article>
+        </div>
+      </section>
+
+      <section class="page" id="page-live">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Live Sensor Feed</h2>
+              <p>MAX30102, DHT11, SW-420, VC-02, GPS, GSM, and battery state</p>
+            </div>
+            <span id="last-update">Last update: --</span>
+          </div>
+          <div class="live-table" id="live-table"></div>
+        </div>
+      </section>
+
+      <section class="page" id="page-sensor-status">
+        <div class="sensor-status-layout">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Sensor Working Check</h2>
+                <p>Current hardware health from the latest ESP32 reading</p>
+              </div>
+              <span id="sensor-health-summary" class="health-summary">Waiting</span>
+            </div>
+            <div class="sensor-status-grid" id="sensor-status-grid"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Last Device Signal</h2>
+                <p>Use this to confirm the wearable is sending data</p>
+              </div>
+            </div>
+            <div class="signal-list">
+              <div><span>Device</span><strong id="status-device-id">--</strong></div>
+              <div><span>Last update</span><strong id="status-last-update">--</strong></div>
+              <div><span>Upload link</span><strong id="status-wifi">--</strong></div>
+              <div><span>Emergency link</span><strong id="status-gsm">--</strong></div>
+            </div>
+          </article>
+
+          <article class="panel sensor-chart-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Sensor Signal Graph</h2>
+                <p>Heart, oxygen, temperature, battery, and vibration from the ESP32</p>
+              </div>
+            </div>
+            <canvas id="sensorSignalChart"></canvas>
+          </article>
+        </div>
+      </section>
+
+      <section class="page" id="page-alerts">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Emergency Alerts</h2>
+              <p>Acknowledge and resolve safety events</p>
+            </div>
+            <button class="btn btn-primary btn-sm" id="reload-alerts">Reload</button>
+          </div>
+          <div class="table-wrap">
+            <table class="table align-middle">
+              <thead><tr><th>ID</th><th>User</th><th>Alert</th><th>Reason</th><th>Vitals</th><th>Location</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="alerts-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="page" id="page-location">
+        <div class="location-grid">
+          <article class="panel map-panel">
+            <div id="map"></div>
+          </article>
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Latest Position</h2>
+                <p>NEO-6M GPS location</p>
+              </div>
+            </div>
+            <div class="location-list">
+              <div><span>Latitude</span><strong id="loc-lat">--</strong></div>
+              <div><span>Longitude</span><strong id="loc-lng">--</strong></div>
+              <div><span>Speed</span><strong id="loc-speed">--</strong></div>
+              <div><span>Altitude</span><strong id="loc-alt">--</strong></div>
+            </div>
+            <a class="btn btn-outline-primary w-100 mt-3" id="maps-link" target="_blank" rel="noopener">Open in Google Maps</a>
+          </article>
+        </div>
+      </section>
+
+      <section class="page" id="page-devices">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Devices</h2>
+              <p>Registered ESP32 safety wearables</p>
+            </div>
+            <button class="btn btn-primary btn-sm" id="reload-devices">Reload</button>
+          </div>
+          <div class="device-grid" id="devices-grid"></div>
+        </div>
+      </section>
+
+      <section class="page" id="page-settings">
+        <div class="settings-grid">
+          <article class="panel">
+            <div class="panel-head"><div><h2>Firmware Sensor Stack</h2><p>Active wearable configuration</p></div></div>
+            <div class="settings-list">
+              <div><span>Voice module</span><strong>AI Thinker VC-02</strong></div>
+              <div><span>Heart and SpO2</span><strong>MAX30102</strong></div>
+              <div><span>Body temperature</span><strong>DHT11 on GPIO33</strong></div>
+              <div><span>Motion trigger</span><strong>SW-420 vibration</strong></div>
+              <div><span>Location</span><strong>NEO-6M GPS</strong></div>
+              <div><span>Emergency communication</span><strong>SIM800L GSM</strong></div>
+            </div>
+          </article>
+          <article class="panel">
+            <div class="panel-head"><div><h2>VC-02 Command</h2><p>Dashboard expects command ID sent by firmware</p></div></div>
+            <div class="command-card">
+              <span>Emergency voice commands</span>
+              <strong id="setting-voice-command">0x01-0x05</strong>
+              <small>Help Me, Emergency, Save Me, Danger, and Call Police can trigger alerts.</small>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast-container position-fixed top-0 end-0 p-3">
+    <div id="mainToast" class="toast border-0" role="alert">
+      <div class="toast-body" id="toast-message"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>
